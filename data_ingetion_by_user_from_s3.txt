@@ -1,0 +1,68 @@
+Step 1: Create a S3 Bucket and Configure S3 Bucket Access Permissions
+-------------------------------------------------
+		Create a S3 Bucket --> myawsbucketsfnov1
+		copy bucket ARN::(arn:aws:s3:::myawsbucketsfnov1)  
+		 arn:aws:s3:::myawsbucketuser 
+step2:Creating an IAM Policy(policy_s3_user)		
+-------------------------------------------------
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+              "s3:PutObject",
+              "s3:GetObject",
+              "s3:GetObjectVersion",
+              "s3:DeleteObject",
+              "s3:DeleteObjectVersion"
+            ],
+            "Resource": "arn:aws:s3:::myawsbucketuser/csv_s31/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:GetBucketLocation"
+            ],
+            "Resource": "arn:aws:s3:::myawsbucketuser",
+            "Condition": {
+                "StringLike": {
+                    "s3:prefix": [
+                        "csv_s31/*"
+                    ]
+                }
+            }
+        }
+    ]
+}
+
+step3:Creating an IAM user		
+-------------------------------------------------
+users-->create user(sf_s3_user)
+1.Choose Users from the left-hand navigation pane, then click Add user.
+2.On the Add user page, enter a new user name (e.g. sf_s3_user). 
+    Select Programmatic access as the access type, then click Next
+3.Click Attach existing policies directly, and select the policy you created earlier(policy_user_s3). 
+   Then click Next
+     (add key_id and value)
+4.Review the user details, then click Create user(sf_s3_user1).
+
+5.Save the access credentials. The easiest way to record them is to 
+    click Download Credentials to write them to a file (e.g. credentials.csv)
+6. You can copy the Access Key ID and Secret Access Key (By Clicking on Show)
+     or Download the file.
+
+
+step3:Creating an external stage 	
+-------------------------------------------------
+ create or replace stage my_s3_stage_user
+  url='s3://myawsbucketsfnov1/csv_s3/'
+  credentials=(aws_key_id='AKIAZV75ENZ6Y4Q7NM2E' aws_secret_key='+qUO4ffeFY5jykyjo1q4cXZHVKHrDkcRu9IWDtMz')
+  encryption=(type='AWS_SSE_KMS' kms_key_id = 'aws/key');
+  
+  list @my_s3_stage_user;
+  
+  select $1,$2,$3,$4,$5,$6,$7,$8,$9 from @my_s3_stage_user/annual.csv;
+  
+  
