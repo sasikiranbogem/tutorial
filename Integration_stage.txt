@@ -1,0 +1,63 @@
+CREATE OR REPLACE INTEGRATION INTGR1 
+TYPE=EXTERNAL_STAGE
+STORAGE_PROVIDER=S3
+ENABLED=TRUE
+STORAGE_AWS_ROLE_ARN=''
+STORAGE_ALLOWED_LOCATIONS='S3://BUCKET_PATH'
+BLOCKED_LOCATIONS=''S3://BUCKET_PATH''
+
+
+CREATE OR REPLACE STAGE STG_NAME STORAGE_INTEGRATION=INTGR1 URL='S3://BUCKET_PATH' FILE FORMAT='FILE_FORMAT_CSV'
+
+EMP--FILE--SE3 --SF
+
+ORACLE_PROC: 
+CREATE OR REPLACE PROCEDURE PROC_TAB_TO_CSV IS
+BEGIN
+
+END;
+
+
+CREATE OR REPLACE PIPE PIPE_NAM 
+AUTO_INGEST=TRUE 
+SNS='SNS NAME'
+AS
+COPY INTO SF_STAGE_TAB FROM(SELECT $1,$2,$3... FROM @STG_NAME/FILE_NAME.CSV FILEFORMAT='' ON_ERROR=CONTINUE)
+$$
+
+SF_TARGET_SF
+SF_  
+
+DELTA
+
+MERGE INTO TARGET_TAB TG
+USING STAGE_TAB SRC
+ON (SRC.ID=TG.ID) (JOIN COLUMNS)
+WHEN MATCHED THEN 
+UPDATE TARGET_TAB  SET TG.END_DATE=SYSDATE ,
+            
+              TG.FLG_LATEST='N'
+WHEN NOT MATCHED THEN 
+INSERT INTO TARGET_TAB(START_DATE,FLG_LATEST,COL1,COL2...) VAUES(CURRENT_TIMESTAMP,'y',SRC.COL1,SRC.COL2....)
+
++
+
+/* Standard data load */
+COPY INTO [<namespace>.]<table_name>
+     FROM { internalStage | externalStage | externalLocation }
+[ FILES = ( '<file_name>' [ , '<file_name>' ] [ , ... ] ) ]
+[ PATTERN = '<regex_pattern>' ]
+[ FILE_FORMAT = ( { FORMAT_NAME = '[<namespace>.]<file_format_name>' |
+                    TYPE = { CSV | JSON | AVRO | ORC | PARQUET | XML } [ formatTypeOptions ] } ) ]
+[ copyOptions ]
+[ VALIDATION_MODE = RETURN_<n>_ROWS | RETURN_ERRORS | RETURN_ALL_ERRORS ]
+
+/* Data load with transformation */
+COPY INTO [<namespace>.]<table_name> [ ( <col_name> [ , <col_name> ... ] ) ]
+     FROM ( SELECT [<alias>.]$<file_col_num>[.<element>] [ , [<alias>.]$<file_col_num>[.<element>] ... ]
+            FROM { internalStage | externalStage } )
+[ FILES = ( '<file_name>' [ , '<file_name>' ] [ , ... ] ) ]
+[ PATTERN = '<regex_pattern>' ]
+[ FILE_FORMAT = ( { FORMAT_NAME = '[<namespace>.]<file_format_name>' |
+                    TYPE = { CSV | JSON | AVRO | ORC | PARQUET | XML } [ formatTypeOptions ] } ) ]
+[ copyOptions ]

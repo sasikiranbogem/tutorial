@@ -1,0 +1,70 @@
+
+CREATE FILE FORMAT "MY_DB"."SF_SCHMA".db_json TYPE = 'JSON' COMPRESSION = 'AUTO' 
+ENABLE_OCTAL = FALSE ALLOW_DUPLICATE = FALSE STRIP_OUTER_ARRAY = FALSE STRIP_NULL_VALUES = FALSE IGNORE_UTF8_ERRORS = FALSE;
+
+create or replace stage my_s3_stage
+  storage_integration = s3_int
+  url = 's3://myawsbucketsfnov1/json_db/'
+  file_format = db_json;
+  
+list @my_s3_stage;
+
+select * from @my_s3_stage/emp.json;
+
+create or replace table emp_json (json_data  variant );
+
+
+copy into emp_json
+    from  @my_s3_stage/emp.json
+    on_error = 'skip_file';
+
+select * from emp_json;
+
+select * from emp_json e;
+
+list @my_s3_stage;
+create or replace table jsonRecord(jsonRecord variant);
+
+copy into jsonRecord
+  from  @my_s3_stage/json_cust.json
+    on_error = 'skip_file';
+
+select * from jsonRecord;
+ 
+select parse_json(JSONRECORD) from jsonRecord;
+ 
+select jsonrecord:customer from JSONRECORD;
+
+select get_path(jsonrecord, 'address') from JSONRECORD;
+
+select jsonrecord:address.city from JSONRECORD where jsonrecord:customer = 'Nina';
+
+select jsonrecord['address']['city'] from JSONRECORD where jsonrecord:customer = 'Nina';
+
+select jsonrecord['orders'][0] from JSONRECORD where jsonrecord:customer = 'Nina';
+
+select jsonrecord:orders[0] from JSONRECORD where jsonrecord:customer = 'Nina';
+
+select jsonrecord:customer
+      , jsonrecord:orders  
+ from JSONRECORD;
+ 
+select jsonrecord:customer
+      , jsonrecord:orders  
+      ,prod.value
+ from JSONRECORD,
+   lateral flatten(input => jsonrecord:orders) prod ;
+   
+select jsonrecord:customer
+      , jsonrecord:orders  
+      ,prod.value
+       ,prod.value:product
+       ,prod.value:quantity
+ from JSONRECORD,
+   lateral flatten(input => jsonrecord:orders) prod ;
+
+select jsonrecord:customer
+       ,prod.value:product
+       ,prod.value:quantity
+ from JSONRECORD,
+   lateral flatten(input => jsonrecord:orders) prod ;

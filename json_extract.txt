@@ -1,0 +1,73 @@
+CREATE OR REPLACE STAGE json_stage;
+
+PUT file://C:\Users\admin\Downloads\APIData_New.json @json_stage;
+
+create table Raw_api_usage_report(data variant);
+
+COPY INTO Raw_api_usage_report
+FROM @json_stage/APIData_New.json
+FILE_FORMAT = (TYPE = 'JSON');
+
+select t.value:"_name"::STRING AS method_name,
+    t.value:"_instanceclass"::STRING AS instance_class,
+    t.value:"_declaringclass"::STRING AS declaring_class,
+    t.value:"_methodsignature"::STRING AS method_signature,
+    t.value:"_returntype"::STRING AS return_type,
+    t.value:"_invocationtype"::STRING AS invocation_type,
+    f.value:"_name"::STRING AS class_name,
+    f.value:"_parent"::STRING AS parent_class,
+    f.value:"_linesofcode"::INT AS lines_of_code,
+    f.value:"_filename"::STRING AS filename 
+from Raw_api_usage_report,
+LATERAL FLATTEN(input => PARSE_JSON(data):"WindchillSystemsAPIUsageReport"."MethodInvocations"."class") f,
+LATERAL FLATTEN(input => f.value:"method") t;
+
+CREATE OR REPLACE TABLE api_usage_report (
+    method_name STRING,
+    instance_class STRING,
+    declaring_class STRING,
+    method_signature STRING,
+    return_type STRING,
+    invocation_type STRING,
+    class_name STRING,
+    parent_class STRING,
+    lines_of_code INT,
+    filename STRING
+);
+
+insert into api_usage_report
+select t.value:"_name"::STRING AS method_name,
+    t.value:"_instanceclass"::STRING AS instance_class,
+    t.value:"_declaringclass"::STRING AS declaring_class,
+    t.value:"_methodsignature"::STRING AS method_signature,
+    t.value:"_returntype"::STRING AS return_type,
+    t.value:"_invocationtype"::STRING AS invocation_type,
+    f.value:"_name"::STRING AS class_name,
+    f.value:"_parent"::STRING AS parent_class,
+    f.value:"_linesofcode"::INT AS lines_of_code,
+    f.value:"_filename"::STRING AS filename 
+from Raw_api_usage_report,
+LATERAL FLATTEN(input => PARSE_JSON(data):"WindchillSystemsAPIUsageReport"."MethodInvocations"."class") f,
+LATERAL FLATTEN(input => f.value:"method") t;
+
+select * from api_usage_report;
+
+
+PUT file://C:\Users\admin\Downloads\APIData.xml @json_stage;
+
+
+CREATE OR REPLACE TABLE xml_stg_api_usage_report (
+    id NUMBER AUTOINCREMENT,
+    xml_column VARIANT
+);
+
+COPY INTO xml_stg_api_usage_report(xml_column)
+FROM @json_stage/APIData.xml
+FILE_FORMAT = (TYPE = 'XML');
+
+select * from xml_stg_api_usage_report;
+
+
+SELECT XMLGET(f.value, 'MethodInvocations' ):"$" as "MethodInvocations",
+FROM xml_stg_api_usage_report tb,
+LATERAL FLATTEN(to_array(tb.xml_column:"$" )) f;
